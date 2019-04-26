@@ -28,7 +28,9 @@ def CalcularLapso(df):
      	
     df['created_at'] = pd.to_datetime(df['created_at']) 
 
-    df['created_sec'] = df['created_at']-initialDate
+    df['hora'] = df['created_at']-initialDate
+    df['hora'] = df['hora'] / np.timedelta64(1, 's') / 3600
+    df['hora'] = df['hora'].astype(int)
 
     return df
 
@@ -40,12 +42,12 @@ def eliminaEstadosCortos(df, min):
     for index, row in df.iterrows():
         if index < len(df)-1:
             if row['MoldeID'] == df.at[index+1, 'MoldeID'] and df.at[index+1, 'created_at']-row['created_at'] < minimum_Time:
-                print("elimina: "+str(index)+" Hora next: "+str(df.at[index+1, 'created_at'])+" Hora act "+str(row['created_at']))
+                #print("elimina: "+str(index)+" Hora next: "+str(df.at[index+1, 'created_at'])+" Hora act "+str(row['created_at']))
                 aeliminar.append(index)
                 deleted += 1
 
     #df = df.drop(df.index[aeliminar])
-    print('Eliminaods: '+str(aeliminar))
+    #print('Eliminaods: '+str(aeliminar))
     return df.drop(aeliminar)
 
 def cuentaPiezas(df):
@@ -78,22 +80,22 @@ def exporta(df):
     export = export.reset_index(drop=True)
     export.to_csv(inputdir+'limpiezas.csv')
 
+    export
 
 inputdir = "/Users/rsanchis/datarus/www/master/practicas-arf/Moldes_MantenimientoPreventivo/data/"
 
 #Carrega dels CSV
 df = loadfiles()
 #Calcula temps amb un delta des del inici (01/01/16)
-df = CalcularLapso(df)
+df2 = CalcularLapso(df)
 #Elimina estados de duración demasiado corta
-df = df.sort_values(by=['MoldeID', 'id'])
+df3 = df2.sort_values(by=['MoldeID', 'id'])
 min = 30
-newdf = eliminaEstadosCortos(df, min)
+df4 = eliminaEstadosCortos(df3, min)
 #Reordena
-df = newdf
-df = df.sort_values(by=['id'])
-df = df.reset_index(drop=True)
-df = cuentaPiezas(df)
-df
-exporta(df)
+df5 = cuentaPiezas(df4)
+df5 = df5.sort_values(by=['id'])
+df5 = df5.reset_index(drop=True)
+exporta(df5)
 
+df5
