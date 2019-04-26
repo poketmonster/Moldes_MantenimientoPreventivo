@@ -22,7 +22,7 @@ def get_data(path, filename, normalized=0):
     print(estados.head())
     df = pd.DataFrame(estados)
     df = df.sort_values(by=['MoldeID','hora'])
-    df.drop(df.columns[[0,1,3,4,5,6,7]], axis=1, inplace=True) 
+    df.drop(df.columns[[0,1,3,4,5,6,7,8]], axis=1, inplace=True) 
     df.columns = ['molde', 'hora', 'piezas']
     return df
 
