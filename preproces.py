@@ -50,7 +50,52 @@ def eliminaEstadosCortos(df, min):
     #print('Eliminaods: '+str(aeliminar))
     return df.drop(aeliminar)
 
+def horasRelativas(df):
+    #Convierte las horas absolutas (desdeel inicio de los tiempos)
+    #A relativas, horas desde la anterior limpieza
+    df = df.sort_values(by=['MoldeID', 'id'])
+    df['hora_diff'] = 0
+    moldeAct = 0
+    previo = 0
+
+    for index, row in df.iterrows():
+        if row['EstadoID'] == 1:
+            if row['MoldeID']!=moldeAct:
+                previo = row['hora']
+                df.at[index, 'hora_diff'] = 0
+                moldeAct = row['MoldeID']
+            else:
+                df.at[index, 'hora_diff'] = row['hora'] - previo
+                previo = row['hora']
+
+    df = df.sort_values(by=['id'])
+    return df
+
+def restaHorasFindeSemana(df):
+    #Comprueba si entre la limpieza anterior y esta ha pasado algun fin de semana
+    #De haberlo hecho resta 24h por fin de semana a la hora_diff
+    df = df.sort_values(by=['MoldeID', 'id'])
+    moldeAct = -1
+    previo = 0
+
+    for index, row in df.iterrows():
+        if row['EstadoID'] == 1:
+            if row['MoldeID'] != moldeAct:
+                previo = row['created_at']
+                moldeAct = row['MoldeID']
+            else:
+                daygenerator = (previo + timedelta(x + 1) for x in range((row['created_at'] - previo).days))
+                fin_semana = sum(1 for day in daygenerator if day.weekday() >= 5)
+                #print("A restar: "+str(fin_semana)+" dias en la limpieza han pasado "+str(row['hora_diff'])+" horas y hoy es: "+str(row['created_at']))
+                #Restamos las horas trascurridas en fin de semana
+                df.at[index, 'hora_diff'] = df.at[index, 'hora_diff'] - 24 * fin_semana
+                previo = row['created_at']
+
+    df = df.sort_values(by=['id'])
+    return df
+
 def cuentaPiezas(df):
+    df = df.sort_values(by=['MoldeID', 'id'])
     piezas = 0 
     df['piezas'] = 0
     #print(df)
@@ -59,21 +104,24 @@ def cuentaPiezas(df):
     for index, row in df.iterrows():
         if row['MoldeID']!=moldeAct:
             piezas = 0
+            prev = 0
             
         moldeAct = row['MoldeID']
-        if prev == 1:
-            prev = 0
-        elif row['EstadoID'] == 12:
-            piezas += 1
-            df.at[index, 'piezas'] = piezas
-            prev = 1
-        elif row['EstadoID'] == 1 and piezas > 0:
-            #print("Guardamos: "+str(piezas))
+        
+        if row['EstadoID'] == 12:
+            if prev == 1:
+                prev = 0
+            else:
+                piezas += 1
+                df.at[index, 'piezas'] = piezas
+                prev = 1
+        
+        if row['EstadoID'] == 1:
+            print("Guardamos: "+str(piezas))
             df.at[index, 'piezas'] = piezas
             piezas = 0
     df = df.sort_values(by=['id'])
     return df
-
 
 def exporta(df):
     export = df.loc[df['EstadoID']==1]
@@ -93,9 +141,10 @@ df3 = df2.sort_values(by=['MoldeID', 'id'])
 min = 30
 df4 = eliminaEstadosCortos(df3, min)
 #Reordena
-df5 = cuentaPiezas(df4)
-df5 = df5.sort_values(by=['id'])
-df5 = df5.reset_index(drop=True)
-exporta(df5)
+df5 = horasRelativas(df4)
 
-df5
+df6 = restaHorasFindeSemana(df5)
+
+df7 = cuentaPiezas(df6)
+
+exporta(df7)
