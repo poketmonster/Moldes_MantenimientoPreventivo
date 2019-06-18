@@ -134,6 +134,14 @@ inputdir = "/Users/rsanchis/datarus/www/master/practicas-arf/Moldes_Mantenimient
 
 #Carrega dels CSV
 df = loadfiles()
+
+#Carrega test
+df = pd.read_csv(inputdir+'/test_set.csv', sep=',', engine='python')
+df2 = pd.read_csv(inputdir+'/test_set2.csv', sep=',', engine='python')
+df = df.append(df2)
+df = df.reset_index(drop=True)
+
+df3
 #Calcula temps amb un delta des del inici (01/01/16)
 df2 = CalcularLapso(df)
 #Elimina estados de duración demasiado corta
@@ -147,4 +155,12 @@ df6 = restaHorasFindeSemana(df5)
 
 df7 = cuentaPiezas(df6)
 
+export = df7.loc[df7['EstadoID']==1]
+export = export.reset_index(drop=True)
+
+export
+export.to_csv(inputdir+'test.csv')
+
+
+df7
 exporta(df7)
