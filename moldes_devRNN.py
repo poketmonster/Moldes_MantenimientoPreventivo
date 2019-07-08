@@ -177,10 +177,10 @@ def build_model2piezas(layers):
     #model.compile(loss='mse', optimizer='rmsprop',metrics=['accuracy'])
 
 
-    #optimizer = optimizers.SGD(lr=0.1, decay=0, momentum=0.9, nesterov=True)
-    optimizer = optimizers.RMSprop()
+    optimizer = optimizers.SGD(lr=0.1, decay=0, momentum=0.9, nesterov=True)
+    #optimizer = optimizers.RMSprop()
 
-    model.compile(loss='mse',optimizer=optimizer, metrics=['accuracy', se_met])
+    model.compile(loss='mse',optimizer=optimizer, metrics=['accuracy'])
 
     print(model.summary())
     return model
@@ -324,10 +324,10 @@ def main():
     print("y_test", y_test.shape)
 
     #Construir el modelo
-    model = build_modelGRU(X_train.shape)
+    model = build_model2piezas([X_train.shape[2],sequence_length])
 
     #Entrenar el modelo
-    epochs = 300
+    epochs = 30
     batch_size = 100
     model = run_model(model, epochs, batch_size, X_train, y_train, X_test, y_test)
 
@@ -337,23 +337,10 @@ def main():
     #Gráfico resultados
     plotResults(prediccion, y_test)
 
-    validarResultados(model, sequence_length, X_test, y_test)
+    #validarResultados(model, sequence_length, X_test, y_test)
 
     print("Media: "+str(np.mean(prediccion)))
 
-    '''
-    #Gráfico resultados
-    fAmpliacion = 2
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-
-    #Gráfico resultados
-    fAmpliacion = 3
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-
-    #Gráfico resultados
-    fAmpliacion = 4
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-    '''
 
   
 if __name__== "__main__":

@@ -193,20 +193,3 @@ export.to_csv(inputdir+'test.csv')
 df8
 exporta(df8)
 
-
-#Test
-
-dftest = df7
-df7.head()
-
-df7["extermo"] = np.nan
-df7["demanda"] = np.nan
-df7["reparaciones"] = np.nan
-
-dftest.at[349998, 'extermo'] = 1
-
-
-m_info = loadInfoMoldes()
-
-molde = m_info.loc[m_info['id'] == 666]
-molde.shape[0]

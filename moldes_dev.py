@@ -30,6 +30,12 @@ from wtte.wtte import WeightWatcher
 import matplotlib.pyplot as plt2
 
 
+def order(frame,var): 
+    varlist =[w for w in frame.columns if w not in var] 
+    frame = frame[var+varlist] 
+    return frame
+
+
 
 def get_data(path, filename, objetivo = "horas", normalized=0):
 
@@ -38,16 +44,55 @@ def get_data(path, filename, objetivo = "horas", normalized=0):
     df = pd.DataFrame(estados)
     df = df.sort_values(by=['MoldeID','hora'])
         
-    df.drop(df.columns[[0,1,3,4,5,6,7,8]], axis=1, inplace=True) 
+    df.drop(df.columns[[0,1,3,4,5,6,7,8,13]], axis=1, inplace=True) 
+
+    if objetivo == "piezas":
+        df.columns = ['molde', 'horas', 'piezas', 'externo', 'demanda']
+    else:
+        df.insert(1, 'piezas2', df['piezas'])
+        df.drop(df.columns[[3]], axis=1, inplace=True) 
+        df.columns = ['molde', 'horas', 'piezas', 'externo', 'demanda']
+
+    df = order(df,['molde', 'horas', 'externo', 'demanda', 'piezas'])
+
+    print("Horas inicial ")
+    print(str(df[1:5]))
+
+
+    if normalized and objetivo == "horas":
+        # MinMax normalization (from 0 to 1)
+        df['horas_norm'] = df['horas']
+        cols_normalize = df.columns.difference(['molde','horas'])
+        min_max_scaler = preprocessing.MinMaxScaler()
+        norm_df = pd.DataFrame(min_max_scaler.fit_transform(df[cols_normalize]), 
+                                    columns=cols_normalize, 
+                                    index=df.index)
+        join_df = df[df.columns.difference(cols_normalize)].join(norm_df)
+        df = join_df.reindex(columns = df.columns)
+    
+
+    return df
+
+
+def get_data2(path, filename, objetivo = "horas", normalized=0):
+
+    estados = pd.read_csv(path+'/data/'+filename, header=0) 
+    print(estados.head())
+    df = pd.DataFrame(estados)
+    df = df.sort_values(by=['MoldeID','hora'])
+        
+    df.drop(df.columns[[0,1,3,4,5,6,7,8,11,12,13]], axis=1, inplace=True) 
 
     if objetivo == "piezas":
         df.columns = ['molde', 'horas', 'piezas']
     else:
         df.insert(1, 'piezas2', df['piezas'])
         df.drop(df.columns[[3]], axis=1, inplace=True) 
-        df.columns = ['molde', 'piezas', 'horas']
+        df.columns = ['molde', 'horas', 'piezas']
 
-    print("Horas inicial "+str(df[1:30]))
+
+    print("Horas inicial ")
+    print(str(df[1:5]))
 
 
     if normalized and objetivo == "horas":
@@ -88,6 +133,8 @@ def load_data(cambios, porcent_train, seq_len = 10):
 
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], amount_of_features))
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], amount_of_features))  
+
+    print('Salida cambios arraytemporal'+str(x_test.shape))
 
     return [x_train, y_train, x_test, y_test]
 
@@ -159,23 +206,28 @@ def build_model2(layers):
 
 
 def build_model2piezas(layers):
-    d = 0.3
-    do = 0
-    rd = 0.1
+    d = 0.7
+    rd = 0.5
+    gn = 0.2
     model = Sequential()
-    model.add(LSTM(256, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=True))
-    model.add(LSTM(128, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=True))
+    model.add(LSTM(64, input_shape=(layers[1], layers[0]), recurrent_dropout=rd, return_sequences=True))
     model.add(Dropout(d))
-    model.add(LSTM(64, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=True))
+    model.add(GaussianNoise(gn))
+    model.add(LSTM(32, input_shape=(layers[1], layers[0]), recurrent_dropout=rd, return_sequences=True))
     model.add(Dropout(d))
-    model.add(LSTM(64, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd))
+    model.add(GaussianNoise(gn))
+    model.add(LSTM(32, input_shape=(layers[1], layers[0]), recurrent_dropout=rd))
     model.add(Dropout(d))
+    model.add(GaussianNoise(gn))
     model.add(Dense(32,kernel_initializer='uniform',activation='linear'))  
     model.add(Dropout(d))
+    model.add(GaussianNoise(gn))
     model.add(Dense(16,kernel_initializer='uniform',activation='linear'))  
     model.add(Dropout(d))
+    model.add(GaussianNoise(gn))
     model.add(Dense(8,kernel_initializer='uniform',activation='linear')) 
     model.add(Dropout(d))
+    model.add(GaussianNoise(gn))
     model.add(Dense(1,kernel_initializer='uniform',activation='linear'))
     
     #model.compile(loss='mse',optimizer='adam',metrics=[r2_keras])
@@ -185,7 +237,7 @@ def build_model2piezas(layers):
     #optimizer = optimizers.SGD(lr=0.1, decay=0, momentum=0.9, nesterov=True)
     optimizer = optimizers.RMSprop()
 
-    model.compile(loss='mse',optimizer=optimizer, metrics=['accuracy', se_met])
+    model.compile(loss='mse',optimizer=optimizer, metrics=['accuracy'])
 
     print(model.summary())
     return model
@@ -194,7 +246,6 @@ def build_model2piezas(layers):
 
 def run_model(model, epochs, batch_size, X_train, y_train, X_test, y_test):
     history = History()
-    nanterminator = callbacks.TerminateOnNaN()
 
     model.fit(
         X_train,
@@ -203,7 +254,7 @@ def run_model(model, epochs, batch_size, X_train, y_train, X_test, y_test):
         epochs=epochs,
         validation_split=0.25,
         verbose=1,
-        callbacks=[nanterminator,history])
+        callbacks=[history])
 
     trainScore = model.evaluate(X_train, y_train, verbose=0)
     print('Train Score: %.10f MSE (%.10f RMSE)' % (trainScore[0], math.sqrt(trainScore[0])))
@@ -288,7 +339,8 @@ def main():
     path ="~/datarus/www/master/practicas-arf/Moldes_MantenimientoPreventivo"
     filename="limpiezas.csv"
     objetivo = "piezas" #"horas" o "piezas" - default "horas"
-    df = get_data(path, filename, objetivo, 0)
+    #df = get_data(path, filename, objetivo, 0)
+    df = get_data2(path, filename, objetivo, 0)
     df = df.sort_values(by=['molde'])
     if objetivo == "piezas":
         df = df.drop(df[df.piezas <= 0].index)
@@ -301,8 +353,8 @@ def main():
 
 
     #Separar corpus
-    sequence_length = 10
-    porcent_train = 0.8
+    sequence_length = 8
+    porcent_train = 0.9
     X_train, y_train, X_test, y_test = load_data(df[::-1], porcent_train, sequence_length)
     print("X_train", X_train.shape)
     print("y_train", y_train.shape)
@@ -316,7 +368,7 @@ def main():
         model = build_model2([X_train.shape[2],sequence_length])
 
     #Entrenar el modelo
-    epochs = 300
+    epochs = 3000
     batch_size = 100
     model = run_model(model, epochs, batch_size, X_train, y_train, X_test, y_test)
 
@@ -326,23 +378,10 @@ def main():
     #Gráfico resultados
     plotResults(prediccion, y_test)
 
-    validarResultados(model, sequence_length, X_test, y_test)
-
+    #validarResultados(model, sequence_length, X_test, y_test)
+    #print("Predicciones:" +str(prediccion))
     print("Media: "+str(np.mean(prediccion)))
 
-    '''
-    #Gráfico resultados
-    fAmpliacion = 2
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-
-    #Gráfico resultados
-    fAmpliacion = 3
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-
-    #Gráfico resultados
-    fAmpliacion = 4
-    plotResults((prediccion-np.mean(prediccion))*fAmpliacion+np.mean(prediccion), y_test)
-    '''
 
   
 if __name__== "__main__":
