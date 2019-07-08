@@ -21,6 +21,7 @@ def loadfiles():
     final_df = final_df.reset_index(drop=True)
     return final_df
 
+
 def CalcularLapso(df):
     date_str = '01/01/2016' # The date - 29 Dec 2017
     format_str = '%d/%m/%Y' # The format
@@ -117,11 +118,36 @@ def cuentaPiezas(df):
                 prev = 1
         
         if row['EstadoID'] == 1:
-            print("Guardamos: "+str(piezas))
+            #print("Guardamos: "+str(piezas))
             df.at[index, 'piezas'] = piezas
             piezas = 0
     df = df.sort_values(by=['id'])
     return df
+
+
+def loadInfoMoldes():
+    moldes_info = pd.DataFrame()
+    moldes_info = pd.read_csv(inputdir+'/moldes2.csv', sep=',', engine='python')
+    return moldes_info
+
+
+def addInfoMolde(df):
+    m_info = loadInfoMoldes()
+
+    df["extermo"] = np.nan
+    df["demanda"] = np.nan
+    df["reparaciones"] = np.nan
+
+    for index, row in df.iterrows():
+        molde = m_info.loc[m_info['id'] == row['MoldeID']]
+        if molde.shape[0] == 1:
+            df.at[index, 'extermo'] = molde['Externo']
+            df.at[index, 'demanda'] = molde['MaxFabDia']
+            df.at[index, 'reparaciones'] = molde['numReparaciones']
+        else:
+            print("Error al buscar el molde"+str(row['MoldeID']))
+    return df
+
 
 def exporta(df):
     export = df.loc[df['EstadoID']==1]
@@ -129,6 +155,7 @@ def exporta(df):
     export.to_csv(inputdir+'limpiezas.csv')
 
     export
+
 
 inputdir = "/Users/rsanchis/datarus/www/master/practicas-arf/Moldes_MantenimientoPreventivo/data/"
 
@@ -141,7 +168,7 @@ df2 = pd.read_csv(inputdir+'/test_set2.csv', sep=',', engine='python')
 df = df.append(df2)
 df = df.reset_index(drop=True)
 
-df3
+df
 #Calcula temps amb un delta des del inici (01/01/16)
 df2 = CalcularLapso(df)
 #Elimina estados de duración demasiado corta
@@ -155,12 +182,31 @@ df6 = restaHorasFindeSemana(df5)
 
 df7 = cuentaPiezas(df6)
 
-export = df7.loc[df7['EstadoID']==1]
+df8 = addInfoMolde(df7)
+
+export = df8.loc[df8['EstadoID']==1]
 export = export.reset_index(drop=True)
 
 export
 export.to_csv(inputdir+'test.csv')
 
+df8
+exporta(df8)
 
-df7
-exporta(df7)
+
+#Test
+
+dftest = df7
+df7.head()
+
+df7["extermo"] = np.nan
+df7["demanda"] = np.nan
+df7["reparaciones"] = np.nan
+
+dftest.at[349998, 'extermo'] = 1
+
+
+m_info = loadInfoMoldes()
+
+molde = m_info.loc[m_info['id'] == 666]
+molde.shape[0]
