@@ -206,30 +206,29 @@ def build_model2(layers):
 
 
 def build_model2piezas(layers):
-    d = 0.7
+    d = do = 0.7
     rd = 0.5
     gn = 0.2
     model = Sequential()
-    model.add(LSTM(64, input_shape=(layers[1], layers[0]), recurrent_dropout=rd, return_sequences=True))
-    model.add(Dropout(d))
+
+    
+    model.add(LSTM(128, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=True))
     model.add(GaussianNoise(gn))
-    model.add(LSTM(32, input_shape=(layers[1], layers[0]), recurrent_dropout=rd, return_sequences=True))
-    model.add(Dropout(d))
+    model.add(LSTM(64, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=True))
     model.add(GaussianNoise(gn))
-    model.add(LSTM(32, input_shape=(layers[1], layers[0]), recurrent_dropout=rd))
+    model.add(LSTM(32, input_shape=(layers[1], layers[0]), dropout=do, recurrent_dropout=rd, return_sequences=False))
+    model.add(GaussianNoise(gn))
+    model.add(Dense(32,kernel_initializer='uniform',activation='linear'))  
     model.add(Dropout(d))
     model.add(GaussianNoise(gn))
     model.add(Dense(32,kernel_initializer='uniform',activation='linear'))  
     model.add(Dropout(d))
     model.add(GaussianNoise(gn))
-    model.add(Dense(16,kernel_initializer='uniform',activation='linear'))  
-    model.add(Dropout(d))
-    model.add(GaussianNoise(gn))
-    model.add(Dense(8,kernel_initializer='uniform',activation='linear')) 
+    model.add(Dense(16,kernel_initializer='uniform',activation='linear')) 
     model.add(Dropout(d))
     model.add(GaussianNoise(gn))
     model.add(Dense(1,kernel_initializer='uniform',activation='linear'))
-    
+
     #model.compile(loss='mse',optimizer='adam',metrics=[r2_keras])
     #model.compile(loss='mse', optimizer='rmsprop',metrics=['accuracy'])
 
@@ -339,8 +338,8 @@ def main():
     path ="~/datarus/www/master/practicas-arf/Moldes_MantenimientoPreventivo"
     filename="limpiezas.csv"
     objetivo = "piezas" #"horas" o "piezas" - default "horas"
-    #df = get_data(path, filename, objetivo, 0)
-    df = get_data2(path, filename, objetivo, 0)
+    df = get_data(path, filename, objetivo, 0)
+    #df = get_data2(path, filename, objetivo, 0)
     df = df.sort_values(by=['molde'])
     if objetivo == "piezas":
         df = df.drop(df[df.piezas <= 0].index)
